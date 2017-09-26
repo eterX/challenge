@@ -30,33 +30,26 @@ in the trial.
 
         1.  specify a mission (goal, path, speed)
         2.  dynamically change Robot’s speed during a mission
-        3.  have a visual and/or textual representation of Robot’s
-            current state ( x, y, theta, linear velocity, and angular
-            velocity, In/Off-Goal/Idle/Paused)
+        3.  have a visual and/or textual representation of Robot’s current state ( x, y, theta, linear velocity, and angular velocity, In/Off-Goal/Idle/Paused)
         4.  pause and resume Robot’s movement
         5.  abort the current mission (Robot to Idle state)
 
 2.  MVP structure (non-functional):
 
-    1.  Web interface for Monitor (featuring a read-only Actionlib
-        client)
+    1.  Web interface for Monitor (featuring a read-only Actionlib client)
     2.  Interface for Operator (featuring an Actionlib client)
-    3.  Rosnode, a Robot Operating System<sup>[ROS]</sup> node with Actionlib
-        server
-    4.  Robot, a robot simulated with a turtlebot instance of the
-        turtlesim package in Rosnode
-    5.  launchfiles shall be provided (with Contractor’s requisites in
-        place)
+    3.  Rosnode, a Robot Operating System<sup>[ROS]</sup> node with Actionlib server
+    4.  Robot, a robot simulated with a turtlebot instance of the turtlesim package in Rosnode
+    5.  launchfiles shall be provided (with Contractor’s requisites in place)
     6.  ROS node(s) and the web application should work on an Ubuntu 16.04 box and Google Chrome.
 
-![arquitectura](arquitectura.png)
+![diag-estructural](diag-estructural.png)
 
 
 3.  constraints (non-functional):
 
-    1.  Python programming language and APIs shall be used for
-        Operator’s interface
-    2.  Monitor interface shall leverage ROSlibjs
+    1.  Python3 programming language and APIs shall be used for Operator’s interface
+    2.  Monitor interface shall leverage [ROSlibjs](http://wiki.ros.org/roslibjs)
 
 ## Scope of work
 
@@ -69,19 +62,17 @@ in the trial.
 2.  Deliverables:
 
     1.  This SoW, agreed by all the stakeholders
-    2.  Documentation, launchfiles, source code and binaries for the
-        entire system
+    2.  Documentation, launchfiles, source code and binaries for the entire system
     3.  Public Github.com repository
-    4.  Demonstration meeting: a 30 minutes presentation on Client’s
-        premises for the entire system
-    5.  Retrospection Meeting: 30 minutes interview presenting details
-        of the product, the process, tools.
+    4.  Demonstration meeting: a 30 minutes presentation on Client’s premises for the entire system
+    5.  Retrospection Meeting: 30 minutes interview presenting details of the product, the process, tools.
 
 ## Stakeholders
 
 -   Client: the project owner
--   Monitor: a person on the Client’s organization
--   Operator: a person on the Client’s organization
+-   Product Owner: a person on the Client’s organization
+-   Monitor: role on the Client’s organization
+-   Operator: role on the Client’s organization
 -   Contractor: the MVP contractor
 
 ## Period of performance
