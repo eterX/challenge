@@ -1,0 +1,26 @@
+@startuml
+interface HTTP
+
+
+node PC/phone {
+    [browser] - HTTP
+    }
+
+
+node svr {
+    interface Actionlib
+    package "WebSvr" {
+    HTTP - [Monitor Interface]
+    [Monitor Interface] - Actionlib : < progress
+    }
+    package "Operator Interface" {
+    [path_requester]
+    Actionlib - [path_requester] : < progress
+    }
+    package "ROSnode" {
+        [turtleSim]
+        [ActionlibSvr]
+        }
+    Actionlib -  [ActionlibSvr] : > commands
+}
+@enduml
