@@ -1,10 +1,10 @@
-# Turtlesim challenge - Statement of Work
+# TurtleSim challenge - Statement of Work
 
 
 ## Introduction
 
 
-The Client is looking for a contractor who can rovide a **tele-operated robot**, with a **web application**. The Client has some technical skills which allows her to participate in an Agile development as the Product Owner, thusly is asking for a first iteration resulting in a Minimum Viable Product, as a trial. If the sprint meets her expectations, a **long term contract** will be signed to code the complete
+The Client is looking for a contractor who can provide a **tele-operated robot**, with a **web application**. The Client has some technical skills which allows her to participate in an Agile development as the Product Owner, thusly is asking for a first iteration resulting in a Minimum Viable Product, as a trial. If the sprint meets her expectations, a **long term contract** will be signed to code the complete
 salable product from the ground up.
 
 The Contractor has the required expertise and is willing the participate
@@ -29,10 +29,10 @@ in the trial.
     3.  An interface shall allow Operator to:
 
         1.  specify a mission (goal, path, speed)
-        2.  dynamically change Robot’s speed during a mission
-        3.  have a visual and/or textual representation of Robot’s current state ( x, y, theta, linear velocity, and angular velocity, In/Off-Goal/Idle/Paused)
-        4.  pause and resume Robot’s movement
-        5.  abort the current mission (Robot to Idle state)
+        1.  dynamically change Robot’s speed during a mission
+        1.  have a visual and/or textual representation of Robot’s current state ( x, y, theta, linear velocity, and angular velocity, In/Off-Goal/Idle/Paused)
+        1.  pause and resume Robot’s movement
+        1.  abort the current mission (Robot to Idle state)
 
 2.  MVP structure (non-functional):
 
@@ -43,7 +43,7 @@ in the trial.
     5.  launchfiles shall be provided (with Contractor’s requisites in place)
     6.  ROS node(s) and the web application should work on an Ubuntu 16.04 box and Google Chrome.
 
-![diag-estructural](diag-estructural.png)
+![Diagrama estructural de alto nivel](diag-estructural.png)
 
 
 3.  constraints (non-functional):
@@ -101,8 +101,8 @@ convenience.
 
 The scope might be extended with the following optional requirements:
 
-- Use two (or more) turtles to draw the figure instead of the path of a single turtle. The number of turtles would be specified along with the path to follow.
-- Allow the user to pause and resume motion of the turtle X from the web page.
+1. Use two (or more) turtles to draw the figure instead of the path of a single turtle. The number of turtles would be specified along with the path to follow.
+1. Allow the user to pause and resume motion of the turtle X from the web page.
 
 ## References and relevant standards
 
@@ -114,3 +114,10 @@ The scope might be extended with the following optional requirements:
 September 25, 2017, from https://www.python.org/dev/peps/
 
 
+
+## Document control
+
+|Revision|Date|Author|Status|
+|---|---|---|---|
+|1|25/sep/2017|LB|Draft|
+|2|26/sep/2017|LB|Approved by Client|
