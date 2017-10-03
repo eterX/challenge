@@ -1,0 +1,21 @@
+@startuml
+
+OperatorGUI -> Actionlib_Cnt : function call
+Actionlib_Cnt ---> Actionlib_Svr : actionGoal < GoalID(?)
+Actionlib_Svr ---> Robot : callback/topic/msg
+
+Actionlib_Svr ---> Actionlib_Cnt :   actionFeedback
+Actionlib_Cnt ---> OperatorGUI :   callback
+
+Actionlib_Svr ---> Actionlib_Cnt :   actionFeedback
+Actionlib_Cnt ---> OperatorGUI :   callback
+
+Actionlib_Svr ---> Actionlib_Cnt :   actionFeedback
+Actionlib_Cnt ---> OperatorGUI :   callback
+
+Actionlib_Svr ---> Actionlib_Cnt :   actionResult
+Actionlib_Cnt ---> OperatorGUI :   callback
+
+
+
+@enduml

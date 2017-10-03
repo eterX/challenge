@@ -17,8 +17,7 @@ in the trial.
 
     1.  Robot shall perform missions specified by Operator:
 
-        1.  Go from the current point to any other goal point in 2D
-            space
+        1.  Go from the current point to any other goal point in 2D space
         2.  The path shall be specified by Operator, in 2D space
         3.  The goal is static and may have a considerable tolerance
 

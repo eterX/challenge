@@ -1,3 +1,5 @@
-# Turtlesim challenge
+# Ekumen / challenge
 
-* [Statement of work](https://github.com/eterX/challenge/blob/master/SoW.md)
+
+* [Statement of work](SoW.md)
+* [User's manual](usersManual.md)
