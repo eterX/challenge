@@ -1,0 +1,14 @@
+# Define the goal
+float32 len
+float32 ang
+float32 vel
+---
+# Define the result
+float32 xres
+float32 yres
+#uint8 status same as state
+---
+# Define a feedback message
+float32 xfeed
+float32 yfeed
+float32 ang

@@ -1,0 +1,2 @@
+set(ged_MESSAGE_FILES "/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarAction.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarActionGoal.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarActionResult.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarActionFeedback.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarGoal.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarResult.msg;/home/leandro/ged/catkin_ws/devel/share/ged/msg/goToPointPolarFeedback.msg")
+set(ged_SERVICE_FILES "")
