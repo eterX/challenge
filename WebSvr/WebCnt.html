@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+<script src="roslib.js"></script>
+<script src="svg.min.js"></script>
+<script>
+  // Connecting to ROS
+  // -----------------
+  var ros = new ROSLIB.Ros({
+    url : 'ws://manuela:9090'
+  });
+
+  // If there is an error on the backend, an 'error' emit will be emitted.
+  ros.on('error', function(error) {
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('connected').style.display = 'none';
+    document.getElementById('closed').style.display = 'none';
+    document.getElementById('error').style.display = 'inline';
+    console.log(error);
+  });
+
+  // Find out exactly when we made a connection.
+  ros.on('connection', function() {
+    console.log('Connection made!');
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    document.getElementById('closed').style.display = 'none';
+    document.getElementById('connected').style.display = 'inline';
+  });
+
+  ros.on('close', function() {
+    console.log('Connection closed.');
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('connected').style.display = 'none';
+    document.getElementById('closed').style.display = 'inline';
+  });
+
+  var listener = new ROSLIB.Topic({
+      ros : ros,
+      name : '/ged/listener',
+      messageType : 'std_msgs/String'
+    });
+
+  var listenerCounter = 0
+
+  listenerCounterReset = function () {
+      listenerCounter = 0;
+  };
+
+  listener.subscribe(function(message) {
+        miStr = 'Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data
+        console.log(miStr);
+        rect2.attr({ fill: '#0f0'});
+        //cambiar texto en miLabel
+        //var miLabel = SVG.get('miLabel'); no hace falta, mismo namespace...
+        miLabel.text('Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data);
+        miLabel.attr({ fill: '#0f0'});
+        listenerCounter +=1;
+        });
+    //listener.unsubscribe();
+
+
+</script>
+</head>
+
+<body>
+  <h1>Client Mockup</h1>
+  <div id="statusIndicator">
+    <p id="connecting">
+      Connecting to rosbridge...
+    </p>
+    <p id="connected" style="color:#00D600; display:none">
+      Connected
+    </p>
+    <p id="error" style="color:#FF0000; display:none">
+      Error in the backend!
+    </p>
+    <p id="closed" style="display:none">
+      Connection closed.
+    </p>
+      <p id="listenerCounter" style="display:none"></p>
+
+  </div>
+  <button type='button' onclick='listenerCounterReset();'>call listenerCounterReset()</button>
+
+  <div id="tsim"></div>
+  <script>
+    var draw = SVG('tsim').size(1000, 1000);
+//    console.log("estoy andando...");
+    var rect = draw.rect(100, 100).attr({ fill: '#0', id: 'mirect' }).move(0,50);
+//    prueba de referencia
+    var rect2 = SVG.get('mirect');
+    rect2.animate().move(50, 50);
+    var miLabel = draw.text(text="{placeholder}").attr({ id: 'miLabel' });
+//            .font({size: 12,anchor: 'end',fill: '#fff'}).move(10, 10)
+  </script>
+
+
+</body>
+</html>
