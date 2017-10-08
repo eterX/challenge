@@ -101,7 +101,7 @@ $ rqt_graph
 
 The nodes in place should be:
 
-![](usersManual.d/troubleshoot-architecture.png)   
+![](usersManual.d/troubleshot-architecture.png)   
 <sup> note: please, mind the ticks in the "Group" and "Hide" boxes.</sup> 
 
 ## Usage

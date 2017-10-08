@@ -54,8 +54,10 @@ def ged_client():
 
     # Creates the SimpleActionClient, passing the type of the action
     #client = actionlib.SimpleActionClient('ged_server_py', actionlib_tutorials.msg.FibonacciAction)
-    client = actionlib.SimpleActionClient('ged/ged_server_py', gmsg.goToPointPolarAction)
-    #    client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointPolarAction)
+
+
+    #client = actionlib.SimpleActionClient('ged/ged_server_py', gmsg.goToPointPolarAction)
+    client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointPolarAction)
 
     # Waits until the action server has started up and started
     # listening for goals.

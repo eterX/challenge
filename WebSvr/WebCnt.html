@@ -6,6 +6,11 @@
 <script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script>
 <script>
+  var cursors_collection_size = 10;
+  var trails_collection_size = 10;
+  //var midebug = true;
+  var midebug = false; // shows cursor[0]
+
   function report_err(msg){
     console.log(arguments);
   }
@@ -20,7 +25,7 @@
   function parseLine(cmd_lines_raw){
     var r = /^(\S+?)\(([\S ]+)+\);?$/g;
     var result = r.exec(cmd_lines_raw);
-    var cmd ={method:'',args:[]}
+    var cmd ={method:'',args:[]};
     if(result){
         cmd.method = result[1];
         cmd.args = result[2].replace(/[\'\"]/g,"").split('\,');
@@ -33,27 +38,79 @@
   }
 
   function trail_points_fn(arg1,arg2){
-    console.log('do trail_points',[arg1,arg2]);
+          /* param: INT id // id del trail afectado
+      param: STRING points // ej: "", ej; "0 0 30 30 -20 30"
+      result: STRING "OK|ERROR"
+
+      updates points attribute of a svg.polyline element. Main use case: points="" deletes the trail
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "trail_clear(1,"")"
+        Acciones Javascript:
+                 if (id  >= 0) { trails_collection[id].attr({points: ""})
+
+        String recibido desde backend: "trail_clear(1,"0,0, 30,30 -20,30")"
+        Acciones Javascript:
+                 if (id >= 0) { trails_collection[id].attr({points: "0,0, 30,30 -20,30"})
+
+
+
+       */
+
+    if ( midebug ) { console.log('do trail_points',[arg1,arg2]); };
     var id=Number(arg1);
-    //var trail=trail_template.clone().show();
-    trail.attr({points:arg2});
+    if ( id < cursors_collection_size) {trails_collection[id].attr({points:arg2});}
   }
 
 
   function cursor_move_fn(arg1,arg2,arg3,arg4){
-    console.log('do cursor_move',[arg1,arg2,arg3,arg4]);
+      /* param: INT id // id od the relevant cursor
+      param: FLOAT x // current position
+      param: FLOAT y // current position
+      param: BOOL show // (show|¬hide) cursor
+      result: STRING "OK|ERROR"
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "cursor_move(1, 10.54, -2,3, true)"
+        Acciones Javascript:
+                cursors_collection[id].transform({x:10.45,y:-2.3});
+                show ? cursors_collection[id].show() : cursors_collection[id].hide()
+       */
+    if ( midebug ) { console.log('do cursor_move',[arg1,arg2,arg3,arg4]); };
+    var id=Number(arg1);
     var x=Number(arg2);
     var y=Number(arg3);
-    cursor.transform({x:x,y:y});
+    (arg4 == "true") ? cursors_collection[id].show() : cursors_collection[id].hide();
+    //(arg4 == "true") ? console.log("es true") : console.log("es false") ;
+    if ( id < cursors_collection_size) { cursors_collection[id].transform({x:x,y:y}); }
+  }
+
+  function cursor_rotate_fn(arg1,arg2) {
+      /* param: INT id // id del cursor afectado
+      param: INTEGER theta // new bearing
+      result: STRING "OK|ERROR"
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "cursor_rotate(1, -45)"
+        Acciones Javascript:
+                 cursors_collection[id].rotate(-45);
+       */
+    if ( midebug ) { console.log('do cursor_rotate',[arg1,arg2]); };
+    var id=Number(arg1);
+    var theta=Number(arg2);
+    if ( id < cursors_collection_size) {
+      cursors_collection[id].transform({rotation:theta});
+      }
   }
 
   var opCodes = {
     err:report_err,
-    cursor_move:cursor_move_fn,
-    trail_points:trail_points_fn,
-    cursor_rotate: function (arg1,arg2){
-      console.log('do cursor_rotate',[arg1,arg2])
-    }
+    cursor_move: cursor_move_fn,
+    trail_points: trail_points_fn,
+    cursor_rotate: cursor_rotate_fn
   }
   var fn_context = window;
   function runBitCode(lines){
@@ -69,19 +126,10 @@
     }
   }
 
-
-  //moved to cursor_test()
-//  var code  = 'cursor_move(7,500,600,false);';
-//      code += '\ncursor_rotate(2,-90);';
-//  var code_bitcode = parseScript(code);
-//  runBitCode(code_bitcode);
-
-
 </script>
 <script>
   // Connecting to ROS
   // -----------------
-  /*
   var ros = new ROSLIB.Ros({
     url : 'ws://manuela:9090'
   });
@@ -124,18 +172,19 @@
   };
 
   listener.subscribe(function(message) {
-        miStr = 'Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data
+      if ( midebug ) {
+        miStr = 'Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data;
         console.log(miStr);
-        rect2.attr({ fill: '#0f0'});
         //cambiar texto en miLabel
         //var miLabel = SVG.get('miLabel'); no hace falta, mismo namespace...
         miLabel.text('Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data);
         miLabel.attr({ fill: '#0f0'});
         listenerCounter +=1;
-        });
-    //listener.unsubscribe();
+        };
+      runBitCode(parseScript(message.data));
 
-*/
+    });
+  //listener.unsubscribe();
 </script>
 </head>
 
@@ -150,16 +199,25 @@
     </p>
     <p id="error" style="color:#FF0000; display:none">
       Error in the backend!
+      <p>Run the following commands in the terminal then refresh this page. Check the JavaScript
+          console for the output.</p>
+        <code>
+          <p>roscore</p>
+          <p>rosrun ged ged_server.py</p>
+          <p>roslaunch rosbridge_server rosbridge_websocket.launch</p>
+        </code>
+      </p>
+
     </p>
     <p id="closed" style="display:none">
-      Connection closed.
-    </p>
+      <p>Connection closed.</p>
       <p id="listenerCounter" style="display:none"></p>
 
   </div>
   <button type='button' onclick='listenerCounterReset();'>call listenerCounterReset()</button>
 
   <div id="tsim"></div>
+
   <script>
     var draw = SVG('tsim').size(1000, 1000);
 //    console.log("estoy andando...");
@@ -194,30 +252,35 @@
     var trail_template = draw.polyline().fill('none').attr(styletrail);
     trail_template.hide();
 
+    var cursors_collection= new Array ();
+    for (i = 0; i < cursors_collection_size; i++) {
+      cursors_collection.push(cursor_template.clone()); //hidden
+      cursors_collection[i].attr({ id: "cursor"+i}); //hidden
+      }
+
+    var miLabel = draw.text(text="{placeholder}").attr({ id: 'miLabel' });
 
 
 
-    //TODO: MC: crear una colección de 10 cursores
-    var cursor = cursor_template.clone().show(); //x10
-    cursor.transform({x:500,y:500});
-    //TODO: MC: referenciables globalmente. ejemplo: cursors[2].show()
-
-
-    //TODO: MC: crear una colección de 10 estelas. referenciable globalmente
-    var trail = trail_template.clone().show(); //x10
-
+    var trails_collection= new Array ();
+    for (i = 0; i < trails_collection_size; i++) {
+      trails_collection.push(trail_template.clone());
+      trails_collection[i].attr({ id: "trail"+i}).show(); //shown, set points to "" for reset
+      }
 
     cursor_test = function () {
-        cursor.transform({x:50,y:50});
-        cursor.rotate(45);
+        cursors_collection[0].transform({x:500,y:500}).show();
+        cursors_collection[0].attr({stroke:"#0f0"});
+        cursors_collection[0].transform({x:50,y:50});
+        cursors_collection[0].rotate(45);
         //cursor.animate().translate(50,50); //changes coordinate system...
         //cursor.transform({transformedx:50,transformedy:50});
         //cursor.animate().center(100,50);
         //cursor.animate().move(200,100);
 
         //testing absolute coordinates... OK!!
-        cursor.transform({x:50,y:50}); //testing absolute coordinates... OK!!
-        cursor.rotate(45); //testing absolute coordinates... OK!!
+        cursors_collection[0].transform({x:50,y:50}); //testing absolute coordinates... OK!!
+        cursors_collection[0].rotate(45); //testing absolute coordinates... OK!!
         //is cursor in the right place?
         var marker = marker_template.clone().show();
         marker.move(50,75);
@@ -230,78 +293,18 @@
         //markers.add(marker_template.clone().move(50,75).show());
         //markers.add(marker_template.clone().move(70,50).show());
       //markers.hide()
-        var cursor2 = cursor_template.clone().show();
-        cursor2.transform({x:200,y:200});
 
-        var trail = trail_template.clone().show();
-        trail.attr({points:"0,0 30,230 100,200 200,200"});
+        trails_collection[0].attr({points:"0 0 10 130 15 50 50 50"}).show();
 
-        var miLabel = draw.text(text="{placeholder}").attr({ id: 'miLabel' });
-
-        //test case1 form MC
-        var code  = 'cursor_move(7,500.123456,60,false);';
-            code += '\ncursor_rotate(2,-90);';
-            code += "\ntrail_points(1,'0 0 100 100 200 0 300 100');";
+        //test case1
+        //rostopic pub -1 /ged/listener std_msgs/String "fads"
+        var code  = 'cursor_move(0,100.123456,100,true);';
+            code += '\ncursor_rotate(0,560);';
+            code += "\ntrail_points(0,'0 0 1000 1000 1000 0 500 500 ');";
         var code_bitcode = parseScript(code);
         runBitCode(code_bitcode);
 
         };
-
-
-    //TODO: MC: implementar
-    cursor_move = function (id,x,y,show) {
-      /* param: INT id // id del cursor afectado
-      param: FLOAT x // posición de destino
-      param: FLOAT y // posición de destino
-      param: BOOL show // mostrar?
-      result: STRING "OK|ERROR"
-
-    ejemplos:        |String recibido desde backend | Acción | Resultado |
-
-
-        String recibido desde backend: "cursor_move(1, 10.54, -2,3, true)"
-        Acciones Javascript:
-                cursors_collection[id].transform({x:10.45,y:-2.3});
-                show ? cursors_collection[id].show() : cursors_collection[id].hide()
-       */
-    };
-
-    //TODO: MC: implementar
-    cursor_rotate = function (id,theta) {
-      /* param: INT id // id del cursor afectado
-      param: INTEGER theta // orientación de destino , pasa com está
-      result: STRING "OK|ERROR"
-
-    ejemplos:        |String recibido desde backend | Acción | Resultado |
-
-        String recibido desde backend: "cursor_rotate(1, -45)"
-        Acciones Javascript:
-                 cursors_collection[id].rotate(-45);
-       */
-    }
-
-    //TODO: MC: implementar
-    //trail_points = function (id,points) {
-      /* param: INT id // id del trail afectado
-      param: STRING points // ej: "", ej; "0,0, 30,30 -20,30"
-      result: STRING "OK|ERROR"
-
-      manda este string al atributo points. Principal uso: pints="" para borrar la estela con ""
-
-    ejemplos:        |String recibido desde backend | Acción | Resultado |
-
-        String recibido desde backend: "trail_clear(1,"")"
-        Acciones Javascript:
-                 if (id  >= 0) { trails_collection[id].attr({points: ""})
-
-        String recibido desde backend: "trail_clear(1,"0,0, 30,30 -20,30")"
-        Acciones Javascript:
-                 if (id >= 0) { trails_collection[id].attr({points: "0,0, 30,30 -20,30"})
-
-
-
-       */
-    //}
 
     //TODO: MC: caso de prueba (Strings recibidos desde backend)
     'cursor_move(1,500,500,true);'
@@ -309,25 +312,28 @@
     'trail_points(1,"");' //tortuga en en centro, sin estela
     'cursor_move(1,550,550,true);'
     'cursor_rotate(1,45);'
-    'trail_points(1,"500,500 550,550");'
+    'trail_points(1,"500 500 550 550");'
     'cursor_move(1,500,600,true);'
     'cursor_rotate(1,135);'
-    'trail_points(1,"500,500 550,550 500,600");' //tortuga dibujó signo  ">"
+    'trail_points(1,"500 500 550 550 500 600");' //tortuga dibujó signo  ">"
 
 
     //TODO: MC:  caso2 de prueba (Strings recibidos desde backend)
     'cursor_move(7,500,600,false);'
     'cursor_rotate(2,-90);'
     'cursor_move(7,500,500,true);'
-    'trail_points(2,"500,500 500,600");' // otra tortuga cerró el triangulo "|>"
+    'trail_points(2,"500 500 500 600");' // otra tortuga cerró el triangulo "|>"
 
 
+    if ( midebug ) {
+      cursor_test(); // ejemplo de como estaría usando al SVg para representar a cursors y estela
+    };
 
-    cursor_test(); // ejemplo de como estaría usando al SVg para representar a cursors y estelas
+    //initialize 1st cursor
+    //initialize 1st trail
+    cursor_move_fn("1","500","500","true")
+    trail_points_fn("1","");
 
-
-
-//            .font({size: 12,anchor: 'end',fill: '#fff'}).move(10, 10)
   </script>
 
 

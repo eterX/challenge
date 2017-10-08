@@ -5,4 +5,7 @@
                 </node>
                 <node pkg="ged" name="ged_server_py" type="ged_server.py" respawn="true" />
         </group>
+	<include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" > 
+		<arg name="port" value="9090"/>
+	</include>
 </launch>
