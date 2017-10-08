@@ -3,11 +3,72 @@
 <head>
 <meta charset="utf-8" />
 <script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
-<script src="roslib.js"></script>
-<script src="svg.min.js"></script>
+<script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script>
+<script>
+  function report_err(msg){
+    console.log(arguments);
+  }
+  function parseScript(str){
+    var cmd_lines_raw =str.split('\n');
+    var cmds = [];
+    for ( var i in cmd_lines_raw) {
+      cmds[i] = parseLine(cmd_lines_raw[i]);
+    }
+    return cmds;
+  }
+  function parseLine(cmd_lines_raw){
+    var r = /^(\S+?)\((\S+)+\);?$/g;
+    var result = r.exec(cmd_lines_raw);
+    var cmd ={method:'',args:[]}
+    if(result){
+        cmd.method = result[1];
+        cmd.args = result[2].split('\,');
+    } else {
+      cmd.method = 'err';
+      cmd.args = 'unparsable line: '+(''+cmd_lines_raw);
+    }
+    return cmd;
+  }
+  function cursor_move_fn(arg1,arg2,arg3,arg4){
+    console.log('do cursor_move',[arg1,arg2,arg3,arg4])
+    cursor.transform({x:150,y:150}); //testing absolute coordinates... OK!!
+
+  }
+  var opCodes = {
+    err:report_err,
+    cursor_move:cursor_move_fn,
+    cursor_rotate: function (arg1,arg2){
+      console.log('do cursor_rotate',[arg1,arg2])
+    }
+  }
+  var fn_context = window;
+  function runBitCode(lines){
+    for(var i in lines){
+      var line = lines[i];
+      var fn = opCodes[line.method];
+      if(!fn){
+        report_err('fn not recognized',line.method,'line '+(1+1*i));
+        return;
+      }
+
+      fn.apply(fn_context,line.args)
+    }
+  }
+  
+  
+  var code  = 'cursor_move(7,500,600,false);';
+      code += '\ncursor_rotate(2,-90);';
+  
+  var code_bitcode = parseScript(code);
+  runBitCode(code_bitcode);
+
+
+</script>
 <script>
   // Connecting to ROS
   // -----------------
+  /*
   var ros = new ROSLIB.Ros({
     url : 'ws://manuela:9090'
   });
@@ -61,7 +122,7 @@
         });
     //listener.unsubscribe();
 
-
+*/
 </script>
 </head>
 
