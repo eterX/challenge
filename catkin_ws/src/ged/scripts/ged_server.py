@@ -38,6 +38,7 @@ import actionlib
 import actionlib_tutorials.msg
 import geometry_msgs.msg as geomsg
 import ged.msg as gmsg
+import std_msgs.msg as smsg
 
 class gedAction(object):
     # create messages that are used to publish feedback/result
@@ -58,6 +59,7 @@ class gedAction(object):
 
 
         self.pubtwist = rospy.Publisher('/ged/turtle1/cmd_vel', geomsg.Twist, queue_size=10)
+        self.pubWeb= rospy.Publisher('/ged/listener', smsg.String, queue_size=10)
 
 
     def pose_callback(self, data):
@@ -67,6 +69,9 @@ class gedAction(object):
         self.pose.y = round(self.pose.y, 4)
         self._feedback.xfeed=self.pose.x
         self._feedback.yfeed=self.pose.y
+        pubWebMsg=smsg.String()
+        pubWebMsg.data="micursor.move({},{})".format(self.pose.x,self.pose.y)
+        self.pubWeb.publish(pubWebMsg)
         self._as.publish_feedback(self._feedback) #keep the client in the loop
 
 

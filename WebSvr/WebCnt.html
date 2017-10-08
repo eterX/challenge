@@ -18,26 +18,39 @@
     return cmds;
   }
   function parseLine(cmd_lines_raw){
-    var r = /^(\S+?)\((\S+)+\);?$/g;
+    var r = /^(\S+?)\(([\S ]+)+\);?$/g;
     var result = r.exec(cmd_lines_raw);
     var cmd ={method:'',args:[]}
     if(result){
         cmd.method = result[1];
-        cmd.args = result[2].split('\,');
+        cmd.args = result[2].replace(/[\'\"]/g,"").split('\,');
     } else {
       cmd.method = 'err';
       cmd.args = 'unparsable line: '+(''+cmd_lines_raw);
+      console.log('unparsable line: '+(''+cmd_lines_raw));
     }
     return cmd;
   }
-  function cursor_move_fn(arg1,arg2,arg3,arg4){
-    console.log('do cursor_move',[arg1,arg2,arg3,arg4])
-    cursor.transform({x:150,y:150}); //testing absolute coordinates... OK!!
 
+  function trail_points_fn(arg1,arg2){
+    console.log('do trail_points',[arg1,arg2]);
+    var id=Number(arg1);
+    //var trail=trail_template.clone().show();
+    trail.attr({points:arg2});
   }
+
+
+  function cursor_move_fn(arg1,arg2,arg3,arg4){
+    console.log('do cursor_move',[arg1,arg2,arg3,arg4]);
+    var x=Number(arg2);
+    var y=Number(arg3);
+    cursor.transform({x:x,y:y});
+  }
+
   var opCodes = {
     err:report_err,
     cursor_move:cursor_move_fn,
+    trail_points:trail_points_fn,
     cursor_rotate: function (arg1,arg2){
       console.log('do cursor_rotate',[arg1,arg2])
     }
@@ -55,13 +68,13 @@
       fn.apply(fn_context,line.args)
     }
   }
-  
-  
-  var code  = 'cursor_move(7,500,600,false);';
-      code += '\ncursor_rotate(2,-90);';
-  
-  var code_bitcode = parseScript(code);
-  runBitCode(code_bitcode);
+
+
+  //moved to cursor_test()
+//  var code  = 'cursor_move(7,500,600,false);';
+//      code += '\ncursor_rotate(2,-90);';
+//  var code_bitcode = parseScript(code);
+//  runBitCode(code_bitcode);
 
 
 </script>
@@ -221,9 +234,17 @@
         cursor2.transform({x:200,y:200});
 
         var trail = trail_template.clone().show();
-        trail.attr({points:"0,0 30,230 100,200 200,200"})
+        trail.attr({points:"0,0 30,230 100,200 200,200"});
 
         var miLabel = draw.text(text="{placeholder}").attr({ id: 'miLabel' });
+
+        //test case1 form MC
+        var code  = 'cursor_move(7,500.123456,60,false);';
+            code += '\ncursor_rotate(2,-90);';
+            code += "\ntrail_points(1,'0 0 100 100 200 0 300 100');";
+        var code_bitcode = parseScript(code);
+        runBitCode(code_bitcode);
+
         };
 
 
@@ -260,7 +281,7 @@
     }
 
     //TODO: MC: implementar
-    trail_points = function (id,points) {
+    //trail_points = function (id,points) {
       /* param: INT id // id del trail afectado
       param: STRING points // ej: "", ej; "0,0, 30,30 -20,30"
       result: STRING "OK|ERROR"
@@ -280,7 +301,7 @@
 
 
        */
-    }
+    //}
 
     //TODO: MC: caso de prueba (Strings recibidos desde backend)
     'cursor_move(1,500,500,true);'
