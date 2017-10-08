@@ -38,6 +38,76 @@ import actionlib
 import actionlib_tutorials.msg
 import geometry_msgs.msg as geomsg
 import ged.msg as gmsg
+import std_msgs.msg as smsg
+
+monitor_updates = True #TODO: config file
+cursors_collection_size = 10
+trails_collection_size = 10
+cursors_collection=list() #global... 
+trails_collection=list()
+cursor_move_template="cursor_move({id},{x},{y},{show});"
+cursor_rotate_template="cursor_rotate({id},{theta});"
+trail_points_template="trail_points({id},{points});"
+
+
+class cursor(object): #python2
+    """
+    tracks remote Monitor entities
+    """
+    #TODO: superclass
+    def __init__(self,id):
+        self.id=id #TODO: validate natural integer < max 
+        self.show=False
+        self.trail=trails_collection[id] #defaults to the same trailid as its own
+
+    def move(self,newpose):
+        result=list()
+        x=newpose.x
+        y=newpose.y
+        theta=newpose.theta
+        if self.show:
+            show="true"
+        else:
+            show="false"
+        self.trail.appendpoint(x,y)
+        result.append(cursor_move_template.format(id=str(self.id),
+                                                  x=str(int(x*1000/11)), #TODO: send this to a "representation layer"
+                                                  y=str(int(1000*(1-y/11))),
+                                                  show=show))
+        result.append(cursor_rotate_template.format(id=str(self.id),theta=int(-theta*360/2/math.pi)))
+        result.append(trail_points_template.format(id=str(self.id),points=self.trail.points))
+
+
+
+        return result
+
+
+class trail(object): #python2
+    """
+    tracks remote Monitor entities
+    """
+    def __init__(self,id):
+        self.id=id #TODO: validate natural integer < max
+        self.__points=list()
+        #self.points=""  #string SVG.poligon.piints format
+
+    @property
+    def points(self): #getter
+        result=""
+        for point in self.__points:
+            result+=" "+str(int(point[0]*1000/11)) #TODO: send this to a "representation layer"
+            result+=" "+str(int(1000*(1-point[1]/11)))
+        return result.strip(" ")
+
+    @points.setter
+    def points(self,x,y):
+        raise TypeError("points is meant to be a private member. use appendpoint instead")
+
+
+
+    def appendpoint(self,x,y):
+        self.__points.append((x,y))
+
 
 class gedAction(object):
     # create messages that are used to publish feedback/result
@@ -58,6 +128,39 @@ class gedAction(object):
 
 
         self.pubtwist = rospy.Publisher('/ged/turtle1/cmd_vel', geomsg.Twist, queue_size=10)
+        self.pubWeb= rospy.Publisher('/ged/listener', smsg.String, queue_size=10)
+
+        for i in range(trails_collection_size):
+            mitrail=trail(id=i)
+            trails_collection.append(mitrail)
+
+        for i in range(cursors_collection_size):
+            micursor=cursor(id=i)
+            cursors_collection.append(micursor)
+
+        cursors_collection[0].show=False #for tests
+        cursors_collection[1].show=True #default cursor
+
+
+    def monitor_update(self,id):
+        """
+            updates Monitor interface
+        :return:
+        
+        
+        rostopic pub -1 /ged/listener std_msgs/String "cursor_move(0,510.123456,50,true);"
+        rostopic pub -1 /ged/listener std_msgs/String "cursor_rotate(0,25.3);"
+        rostopic pub -1 /ged/listener std_msgs/String "trail_points(0,'');"
+        rostopic pub -1 /ged/listener std_msgs/String "trail_points(0,'0 0 50 50 1000 0');"
+        """
+        msgs=cursors_collection[id].move(self.pose)
+
+        pubWebMsg=smsg.String()
+        for msg in msgs:
+            pubWebMsg.data=msg
+            self.pubWeb.publish(pubWebMsg)
+
+
 
 
     def pose_callback(self, data):
@@ -68,7 +171,8 @@ class gedAction(object):
         self._feedback.xfeed=self.pose.x
         self._feedback.yfeed=self.pose.y
         self._as.publish_feedback(self._feedback) #keep the client in the loop
-
+        if ( monitor_updates ):
+            self.monitor_update(1) #TODO: handle more cursors
 
 
 

@@ -74,7 +74,7 @@ if("TRUE" STREQUAL "TRUE")
 else()
   set(ged_SOURCE_PREFIX "")
   set(ged_DEVEL_PREFIX "")
-  set(ged_INSTALL_PREFIX /home/leandro/ged/catkin_ws/install)
+  set(ged_INSTALL_PREFIX /opt/ros/kinetic)
   set(ged_PREFIX ${ged_INSTALL_PREFIX})
 endif()
 
