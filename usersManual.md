@@ -45,7 +45,18 @@ The icon in the TurtleSim window should move a bit:
 
 ### Troubleshooting
 
-* [ ] If previous launched process are still running terminate them.
+* [ ]  If previous launched process are still running terminate them.
+
+* [ ]  If the web interface is not reachable, please, verify that port 8000/TCP is not in use. Then ```cd``` to directory where the project was originally cloned, and type:
+```bash
+cd Websvr/web2py
+python web2py -i 0.0.0.0
+```
+Point your browser to your computers address, port 8000. Por example:
+
+- http://localhost:8000/ (from the same computer)   
+- http://yourComputer:8000/ (from the another computer, a cellhpone, etc)   
+ 
 
 * [ ] repeat the *"roslaunch ..."*  step with the **-v** modifier. This is an example of a normal output:
 
@@ -109,17 +120,25 @@ The nodes in place should be:
 
 ### How to run Ged
 
-* [ ] Run the server nodes. On a *new* terminal window type:
+* [ ] Run the server nodes and web interfaces. On a *new* terminal window, ```cd``` to directory where project was cloned, and type:
 
 ```bash
-roslaunch ged ged.launch
+./ged_pkg start
 ```
 
 A TurtleSim window should popup. Otherwise, refer to the Troubleshooting section of this manual.
 
+Point your browser to your computers address, port 8000. Por example:
+
+* http://localhost:8000/ (from the same computer)   
+* http://yourComputer:8000/ (from the another    computer, a cellhpone, etc)
+
+![](usersManual.d/websvr-monitor.png)
+
+
 ## Uninstall
 
-On a terminal window, ```cd``` to the download directory and type:
+On a *new* terminal window, ```cd``` to directory where the project was originally cloned, and type:
 ```bash
 ./ged_pkg remove_pkg
 ```

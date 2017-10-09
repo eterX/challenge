@@ -19,7 +19,7 @@ micounter={"done":0,"active":0,"feedback":0}
 path_test1="[[8.0,8.0,0.0],[8.0,3.0,0.0],[3.0,8.0,0.0],[3.0,3.0,0.0]]"
 
 
-def ged_client():  #remember, not a class....
+def ged_client(path):  #remember, not a class....
     def done_cb(state,result):
         """
 
@@ -60,7 +60,7 @@ def ged_client():  #remember, not a class....
 
     #client = actionlib.SimpleActionClient('ged/ged_server_py', gmsg.goToPointPolarAction)
     #client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointPolarAction)
-    client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointAction)
+    client = actionlib.SimpleActionClient('ged/ged_server_py', gmsg.goToPointAction)
 
     # Waits until the action server has started up and started
     # listening for goals.
@@ -78,23 +78,7 @@ def ged_client():  #remember, not a class....
     except Exception as e:
         raise  #TODO: validate loaded missions
 
-    if False: #the quest for the goalid and some feedback key
-        # Creates a goal to send to the action server.
-        #goal = actionlib_tutorials.msg.FibonacciGoal(order=4)
-        #goal = gmsg.goToPointPolarGoal(len=1,ang=45)
-        #goal.goal_id="mi_goal_id" # should I Send the goalid to the action server.
-        if True:
-            mysegment=gmsg.goToPointGoal()
-        else: # if goToPointPolarActionGoal() is not meant to be sent... where does goal_id come from?
-            i=10
-            mysegment=gmsg.goToPointPolarActionGoal()
-            mysegment.goal_id.id=str(i)
-            mysegment.goal.len=1.0
-            i+=1
-        client.send_goal(mysegment, done_cb=done_cb, active_cb=active_cb, feedback_cb=feedback_cb)
-        print(dir(client))
-
-    mymission.processPath(path_test1)
+    mymission.processPath(path)
     for i,mysegment in enumerate(mymission.path):
         mygoal=gmsg.goToPointGoal()
         if len(mysegment) > 1:
@@ -120,7 +104,8 @@ if __name__ == '__main__':
         # Initializes a rospy node so that the SimpleActionClient can
         # publish and subscribe over ROS.
         rospy.init_node('ged_client_py')
-        result = ged_client()
-        print("Result: {}".format(result.__repr__))
+        #result = ged_client(path_test1)
+        result = ged_client(sys.argv[1])
+        print("Result: {}".format(result))
     except rospy.ROSInterruptException:
         print("program interrupted before completion", file=sys.stderr)
