@@ -1,0 +1,339 @@
+{{extend 'layout.html'}}
+<script src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+<script src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.3/svg.min.js"></script>
+<script>
+  var cursors_collection_size = 10;
+  var trails_collection_size = 10;
+  //var midebug = true;
+  var midebug = false; // shows cursor[0]
+
+  function report_err(msg){
+    console.log(arguments);
+  }
+  function parseScript(str){
+    var cmd_lines_raw =str.split('\n');
+    var cmds = [];
+    for ( var i in cmd_lines_raw) {
+      cmds[i] = parseLine(cmd_lines_raw[i]);
+    }
+    return cmds;
+  }
+  function parseLine(cmd_lines_raw){
+    var r = /^(\S+?)\(([\S ]+)+\);?$/g;
+    var result = r.exec(cmd_lines_raw);
+    var cmd ={method:'',args:[]};
+    if(result){
+        cmd.method = result[1];
+        cmd.args = result[2].replace(/[\'\"]/g,"").split('\,');
+    } else {
+      cmd.method = 'err';
+      cmd.args = 'unparsable line: '+(''+cmd_lines_raw);
+      console.log('unparsable line: '+(''+cmd_lines_raw));
+    }
+    return cmd;
+  }
+
+  function trail_points_fn(arg1,arg2){
+          /* param: INT id // id del trail afectado
+      param: STRING points // ej: "", ej; "0 0 30 30 -20 30"
+      result: STRING "OK|ERROR"
+
+      updates points attribute of a svg.polyline element. Main use case: points="" deletes the trail
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "trail_clear(1,"")"
+        Acciones Javascript:
+                 if (id  >= 0) { trails_collection[id].attr({points: ""})
+
+        String recibido desde backend: "trail_clear(1,"0,0, 30,30 -20,30")"
+        Acciones Javascript:
+                 if (id >= 0) { trails_collection[id].attr({points: "0,0, 30,30 -20,30"})
+
+
+
+       */
+
+    if ( midebug ) { console.log('do trail_points',[arg1,arg2]); };
+    var id=Number(arg1);
+    if ( id < cursors_collection_size) {trails_collection[id].attr({points:arg2});}
+  }
+
+
+  function cursor_move_fn(arg1,arg2,arg3,arg4){
+      /* param: INT id // id od the relevant cursor
+      param: FLOAT x // current position
+      param: FLOAT y // current position
+      param: BOOL show // (show|¬hide) cursor
+      result: STRING "OK|ERROR"
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "cursor_move(1, 10.54, -2,3, true)"
+        Acciones Javascript:
+                cursors_collection[id].transform({x:10.45,y:-2.3});
+                show ? cursors_collection[id].show() : cursors_collection[id].hide()
+       */
+    if ( midebug ) { console.log('do cursor_move',[arg1,arg2,arg3,arg4]); };
+    var id=Number(arg1);
+    var x=Number(arg2);
+    var y=Number(arg3);
+    (arg4 == "true") ? cursors_collection[id].show() : cursors_collection[id].hide();
+    //(arg4 == "true") ? console.log("es true") : console.log("es false") ;
+    if ( id < cursors_collection_size) { cursors_collection[id].transform({x:x,y:y}); }
+  }
+
+  function cursor_rotate_fn(arg1,arg2) {
+      /* param: INT id // id del cursor afectado
+      param: INTEGER theta // new bearing
+      result: STRING "OK|ERROR"
+
+    ejemplos:        |String recibido desde backend | Acción | Resultado |
+
+        String recibido desde backend: "cursor_rotate(1, -45)"
+        Acciones Javascript:
+                 cursors_collection[id].rotate(-45);
+       */
+    if ( midebug ) { console.log('do cursor_rotate',[arg1,arg2]); };
+    var id=Number(arg1);
+    var theta=Number(arg2);
+    if ( id < cursors_collection_size) {
+      cursors_collection[id].transform({rotation:theta});
+      }
+  }
+
+  var opCodes = {
+    err:report_err,
+    cursor_move: cursor_move_fn,
+    trail_points: trail_points_fn,
+    cursor_rotate: cursor_rotate_fn
+  }
+  var fn_context = window;
+  function runBitCode(lines){
+    for(var i in lines){
+      var line = lines[i];
+      var fn = opCodes[line.method];
+      if(!fn){
+        report_err('fn not recognized',line.method,'line '+(1+1*i));
+        return;
+      }
+
+      fn.apply(fn_context,line.args)
+    }
+  }
+
+</script>
+<script>
+  // Connecting to ROS
+  // -----------------
+  var ros = new ROSLIB.Ros({
+    url : 'ws://'+location.host.replace(/:[0-9]+/g,':9090')
+  });
+
+  // If there is an error on the backend, an 'error' emit will be emitted.
+  ros.on('error', function(error) {
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('connected').style.display = 'none';
+    document.getElementById('closed').style.display = 'none';
+    document.getElementById('error').style.display = 'inline';
+    console.log(error);
+  });
+
+  // Find out exactly when we made a connection.
+  ros.on('connection', function() {
+    console.log('Connection made!');
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('error').style.display = 'none';
+    document.getElementById('closed').style.display = 'none';
+    document.getElementById('connected').style.display = 'inline';
+  });
+
+  ros.on('close', function() {
+    console.log('Connection closed.');
+    document.getElementById('connecting').style.display = 'none';
+    document.getElementById('connected').style.display = 'none';
+    document.getElementById('closed').style.display = 'inline';
+  });
+
+  var listener = new ROSLIB.Topic({
+      ros : ros,
+      name : '/ged/listener',
+      messageType : 'std_msgs/String'
+    });
+
+  var listenerCounter = 0
+
+  listenerCounterReset = function () {
+      listenerCounter = 0;
+  };
+
+  listener.subscribe(function(message) {
+      if ( midebug ) {
+        miStr = 'Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data;
+        console.log(miStr);
+        //cambiar texto en miLabel
+        //var miLabel = SVG.get('miLabel'); no hace falta, mismo namespace...
+        miLabel.text('Received message #'+listenerCounter+' on ' + listener.name + ': ' + message.data);
+        miLabel.attr({ fill: '#0f0'});
+        listenerCounter +=1;
+        };
+      runBitCode(parseScript(message.data));
+
+    });
+  //listener.unsubscribe();
+</script>
+
+<h3>Turtlesim mission</h3>
+
+<br>A mission path consist of a list of points and velocities.<p>
+<p>  Each point is, in turn, a pair of coordinates in 2D plus and an (optionally) desired speed. Coordinates can be any type of number between 0 and 11, inclusive</p>
+<br>
+<p>Example point: [8.0,8.0,0.0]</p>
+<p>Example point: [0,0]</p>
+<p>Example path: [[8.0,8.0,0.0],[8.0,3.0,0.0],[3.0,8.0,0.0],[3.0,3.0,0.0]]</p>
+
+<br><br>
+
+{{=formpath}}
+
+<p>Current path:  {{=current_path}}</p>
+<br><br>
+{{=formabort}}
+
+
+  <div id="statusIndicator">
+    Backend status:
+    <p id="connecting">
+      Connecting to rosbridge...
+    </p>
+    <p id="connected" style="color:#00D600; display:none">
+      Connected
+    </p>
+    <p id="error" style="color:#FF0000; display:none">
+      Error in the backend! Run the following command: in the terminal <code>roslaunch ged ged.launch</code></p>
+      </p>
+    <p id="closed" style="display:none">Connection closed.</p>
+  </div>
+
+  <!--<button type='button' onclick='listenerCounterReset();'>call listenerCounterReset()</button>-->
+
+  <div id="tsim"></div>
+
+  <script>
+    var draw = SVG('tsim').size(1000, 1000);
+//    console.log("estoy andando...");
+    var rect = draw.rect(1000, 1000).attr({ id: 'map' });
+
+    //TODO: css
+    var styleline={stroke:"#dd7052","stroke-width":2,"stroke-dasharray":"9,1.5"}
+    var stylemap=styleline;
+    stylemap.fill="#aeffff";
+    var styletrail={fill:"none","fill-rule":"evenodd",stroke:"#007272","stroke-width":4,"stroke-linecap":"butt","stroke-linejoin":"miter","stroke-opacity":1,"stroke-miterlimit":4,"stroke-dasharray":"6,12","stroke-dashoffset":0}
+    //{fill:"#aeffff","fill-opacity":1,stroke:"#dd7052",stroke_width:15,stroke_linejoin:"round",stroke_miterlimit:4,stroke_dasharray:"55,5",}
+
+
+    //canvas
+    var map = SVG.get('map'); //    prueba de referencia
+    map.attr(stylemap);
+
+    //cursor
+    var cursor_template = draw.group();
+    var circle = draw.circle().attr(styleline).attr({id:"cursor_c",cx:0,cy:0,r:25,fill:"#007272","fill-opacity":0.15});
+    var line = draw.line("0,0 25,0").attr(styleline).attr({id:"cursor_l"});
+    cursor_template.add(circle).add(line).hide();
+    cursor_template.hide();
+
+    //marker
+    var markers = draw.group();
+    var marker_template = draw.group();
+    marker_template.add(draw.line("-5,-5 5,5").attr(styleline)).add(draw.line("-5,5 5,-5").attr(styleline));
+    marker_template.hide();
+
+    //trail
+    var trail_template = draw.polyline().fill('none').attr(styletrail);
+    trail_template.hide();
+
+    var cursors_collection= new Array ();
+    for (i = 0; i < cursors_collection_size; i++) {
+      cursors_collection.push(cursor_template.clone()); //hidden
+      cursors_collection[i].attr({ id: "cursor"+i}); //hidden
+      }
+
+    var miLabel = draw.text(text="{placeholder}").attr({ id: 'miLabel' });
+
+
+
+    var trails_collection= new Array ();
+    for (i = 0; i < trails_collection_size; i++) {
+      trails_collection.push(trail_template.clone());
+      trails_collection[i].attr({ id: "trail"+i}).show(); //shown, set points to "" for reset
+      }
+
+    cursor_test = function () {
+        cursors_collection[0].transform({x:500,y:500}).show();
+        cursors_collection[0].attr({stroke:"#0f0"});
+        cursors_collection[0].transform({x:50,y:50});
+        cursors_collection[0].rotate(45);
+        //cursor.animate().translate(50,50); //changes coordinate system...
+        //cursor.transform({transformedx:50,transformedy:50});
+        //cursor.animate().center(100,50);
+        //cursor.animate().move(200,100);
+
+        //testing absolute coordinates... OK!!
+        cursors_collection[0].transform({x:50,y:50}); //testing absolute coordinates... OK!!
+        cursors_collection[0].rotate(45); //testing absolute coordinates... OK!!
+        //is cursor in the right place?
+        var marker = marker_template.clone().show();
+        marker.move(50,75);
+        markers.add(marker)
+        var marker = marker_template.clone().show();
+        marker.move(75,50);
+        markers.add(marker)
+        // agregar var  marker a un array dentro de un grupo para manipular todos...
+        //markers.add(marker_template.clone().move(50,50).show());
+        //markers.add(marker_template.clone().move(50,75).show());
+        //markers.add(marker_template.clone().move(70,50).show());
+      //markers.hide()
+
+        trails_collection[0].attr({points:"0 0 10 130 15 50 50 50"}).show();
+
+        //test case1
+        //rostopic pub -1 /ged/listener std_msgs/String "fads"
+        var code  = 'cursor_move(0,100.123456,100,true);';
+            code += '\ncursor_rotate(0,560);';
+            code += "\ntrail_points(0,'0 0 1000 1000 1000 0 500 500 ');";
+        var code_bitcode = parseScript(code);
+        runBitCode(code_bitcode);
+
+        };
+
+    //TODO: MC: caso de prueba (Strings recibidos desde backend)
+    'cursor_move(1,500,500,true);'
+    'cursor_rotate(1,0);'
+    'trail_points(1,"");' //tortuga en en centro, sin estela
+    'cursor_move(1,550,550,true);'
+    'cursor_rotate(1,45);'
+    'trail_points(1,"500 500 550 550");'
+    'cursor_move(1,500,600,true);'
+    'cursor_rotate(1,135);'
+    'trail_points(1,"500 500 550 550 500 600");' //tortuga dibujó signo  ">"
+
+
+    //TODO: MC:  caso2 de prueba (Strings recibidos desde backend)
+    'cursor_move(7,500,600,false);'
+    'cursor_rotate(2,-90);'
+    'cursor_move(7,500,500,true);'
+    'trail_points(2,"500 500 500 600");' // otra tortuga cerró el triangulo "|>"
+
+
+    if ( midebug ) {
+      cursor_test(); // ejemplo de como estaría usando al SVg para representar a cursors y estela
+    };
+
+    //initialize 1st cursor
+    //initialize 1st trail
+    cursor_move_fn("1","500","500","true")
+    trail_points_fn("1","");
+
+  </script>
