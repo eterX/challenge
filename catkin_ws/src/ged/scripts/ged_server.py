@@ -48,9 +48,9 @@ trails_collection=list()
 cursor_move_template="cursor_move({id},{x},{y},{show});"
 cursor_rotate_template="cursor_rotate({id},{theta});"
 trail_points_template="trail_points({id},{points});"
-distance_tolerance=0.2
+distance_tolerance=1
 pose_callback_period=0.1 #[secs]
-rospy_Rate=15
+rospy_Rate=10
 
 class cursor(object): #python2
     """
@@ -183,16 +183,16 @@ class gedAction(object):
         #global read-only pose_callback_period
         #cadence of pose msgs processed,
         #TODO: get a ROS-native way for throttling pose updates
-        if (self.pose_callback_last +  pose_callback_period  < time.time()):
-            print("pose_callback tstamp: {}".format(str(time.time())))
 
-            self.pose = data
-            self.pose.x = round(self.pose.x, 4)
-            self.pose.y = round(self.pose.y, 4)
-            if self._as.current_goal is not None:
-                self._feedback.xfeed=self.pose.x
-                self._feedback.yfeed=self.pose.y
-                self._as.publish_feedback(self._feedback) #keep the client in the loop
+        self.pose = data
+        self.pose.x = round(self.pose.x, 4)
+        self.pose.y = round(self.pose.y, 4)
+#            if self._as.current_goal is not None:
+        if (self.pose_callback_last +  pose_callback_period  < time.time()):
+            #print("pose_callback tstamp: {}".format(str(time.time())))
+            self._feedback.xfeed=self.pose.x
+            self._feedback.yfeed=self.pose.y
+            self._as.publish_feedback(self._feedback) #keep the client in the loop
             if ( monitor_updates ):
                 self.monitor_update(1) #TODO: handle cursors_collection
             self.pose_callback_last=time.time()
@@ -226,7 +226,9 @@ class gedAction(object):
             #    self.pubtwist.publish(miwist,)
             #if goal.len != 0:
             miwist=geomsg.Twist()
-            while m.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2)) >= distance_tolerance:
+#            while m.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2)) >= distance_tolerance:
+            while self.get_distance(goal.x,goal.y) > distance_tolerance:
+                print(goal.x,goal.y, self.pose.x, self.pose.y, distance_tolerance, self.get_distance(goal.x,goal.y))
 
                 #Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
                 #linear velocity in the x-axis:
@@ -245,9 +247,9 @@ class gedAction(object):
                 #self.pose_subscriber.unregister()
             #self.pubtwist.publish(miwist)
             #r.sleep()
-            miwist.linear.x = 0
-            miwist.angular.z =0
-            self.pubtwist.publish(miwist)
+            #miwist.linear.x = 0
+            #miwist.angular.z =0
+            #self.pubtwist.publish(miwist)
             self.pose_subscriber.unregister()
 
         if success:
