@@ -64,7 +64,7 @@ find_package(catkin REQUIRED COMPONENTS actionlib_msgs )
 ## Generate actions in the 'action' folder
 add_action_files(
    DIRECTORY action
-   FILES goToPointPolar.action
+   FILES goToPointPolar.action goToPoint.action
  )
 #   Action2.action
 

@@ -2,7 +2,7 @@
 
 #stdlibs
 from __future__ import print_function
-import sys,os
+import sys,os,json
 #ROS
 import rospy, actionlib
 
@@ -16,8 +16,10 @@ import ACBged as acbg
 import actionlib_tutorials.msg
 
 micounter={"done":0,"active":0,"feedback":0}
+path_test1="[[8.0,8.0,0.0],[8.0,3.0,0.0],[3.0,8.0,0.0],[3.0,3.0,0.0]]"
 
-def ged_client():
+
+def ged_client():  #remember, not a class....
     def done_cb(state,result):
         """
 
@@ -57,13 +59,20 @@ def ged_client():
 
 
     #client = actionlib.SimpleActionClient('ged/ged_server_py', gmsg.goToPointPolarAction)
-    client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointPolarAction)
+    #client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointPolarAction)
+    client = actionlib.SimpleActionClient('ged_server_py', gmsg.goToPointAction)
 
     # Waits until the action server has started up and started
     # listening for goals.
     client.wait_for_server()
 
-    mymission=acbg.mission()
+
+    #"rosparam get /ged/turtlesim_node/speed/default"
+    speed_default=rospy.get_param("ged/turtlesim_node/speed/default",default=5)
+
+
+
+    mymission=acbg.mission("default_mission")
     try:
         mymission.load(os.path.dirname(os.path.realpath(__file__))+"/test_mission2.pickle") #TODO: proper file storage
     except Exception as e:
@@ -75,8 +84,7 @@ def ged_client():
         #goal = gmsg.goToPointPolarGoal(len=1,ang=45)
         #goal.goal_id="mi_goal_id" # should I Send the goalid to the action server.
         if True:
-            mysegment=gmsg.goToPointPolarGoal()
-            mysegment.len=1.0
+            mysegment=gmsg.goToPointGoal()
         else: # if goToPointPolarActionGoal() is not meant to be sent... where does goal_id come from?
             i=10
             mysegment=gmsg.goToPointPolarActionGoal()
@@ -86,9 +94,21 @@ def ged_client():
         client.send_goal(mysegment, done_cb=done_cb, active_cb=active_cb, feedback_cb=feedback_cb)
         print(dir(client))
 
-
-    for mysegment in mymission.path:
-        client.send_goal(mysegment, done_cb=done_cb, active_cb=active_cb, feedback_cb=feedback_cb)
+    mymission.processPath(path_test1)
+    for i,mysegment in enumerate(mymission.path):
+        mygoal=gmsg.goToPointGoal()
+        if len(mysegment) > 1:
+            if len(mysegment) > 2:
+                mygoal.x=mysegment[0]
+                mygoal.y=mysegment[1]
+                mygoal.vel=mysegment[2] #ignore mysegment[3:]
+            else:
+                mygoal.x,mygoal.y=mysegment
+                mygoal.vel=speed_default
+        else:
+            rospy.logerr("segment #{} in mission {} discarded: need at least a 2D point ".format(mymission.designation))
+        #mygoal.goal.x,mygoal.goal.y=mysegment
+        client.send_goal(mygoal, done_cb=done_cb, active_cb=active_cb, feedback_cb=feedback_cb)
         # Waits for the server to finish performing the action.
         client.wait_for_result()
 

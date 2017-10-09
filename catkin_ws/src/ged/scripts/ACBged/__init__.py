@@ -8,7 +8,7 @@ Ged module
 #rom actionlib.exceptions import ActionException
 #stdlibs
 from __future__ import print_function
-import sys,pickle
+import sys,pickle,json
 
 #ROS
 import rospy, actionlib, roslib
@@ -47,17 +47,33 @@ class mission(object): #python2 :(
     a mission takes Robot for the current point in 2D to another, through a 2D path.
     as per Requirement 1-I: "Robot shall perform missions specified by Operator:"
     """
-    def __init__(self):
-        self.path=list()
+    def __init__(self,designation):
+        self._path=list()
+        self.designation=designation
 
     def load(self,pathfile):
         import pickle
         try:
             mifile=open(pathfile,"rb")
-            self.path=pickle.load(mifile)
+            self._path=pickle.load(mifile)
             mifile.close()
         except Exception as e:
             print(e)
+
+
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self):
+        raise TypeError("path is meant to be a private member. use processPath as setter")
+
+    def processPath(self,path_as_json_string):
+        try:
+            self._path=json.loads(path_as_json_string)
+        except Exception as e:
+            rospy.logerr("mission {} path not loaded ".format(self.designation))
 
 
 

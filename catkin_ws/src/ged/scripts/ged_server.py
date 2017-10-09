@@ -11,6 +11,7 @@ import sys,math,time
 #ROS
 import rospy
 from turtlesim.msg import Pose
+from turtlesim.srv import *
 
 #Ged
 import ACBged as acbg #Ged's own package, svr and cnt stuff
@@ -41,6 +42,7 @@ import ged.msg as gmsg
 import std_msgs.msg as smsg
 
 monitor_updates = True #TODO: config file
+debug_teleport = True
 cursors_collection_size = 10
 trails_collection_size = 10
 cursors_collection=list() #global... 
@@ -48,7 +50,9 @@ trails_collection=list()
 cursor_move_template="cursor_move({id},{x},{y},{show});"
 cursor_rotate_template="cursor_rotate({id},{theta});"
 trail_points_template="trail_points({id},{points});"
-
+distance_tolerance=0.5
+pose_callback_period=0.1 #[secs]
+rospy_Rate=1
 
 class cursor(object): #python2
     """
@@ -94,7 +98,7 @@ class trail(object): #python2
     @property
     def points(self): #getter
         result=""
-        for point in self.__points:
+        for point in self._trail__points:
             result+=" "+str(int(point[0]*1000/11)) #TODO: send this to a "representation layer"
             result+=" "+str(int(1000*(1-point[1]/11)))
         return result.strip(" ")
@@ -106,29 +110,33 @@ class trail(object): #python2
 
 
     def appendpoint(self,x,y):
-        self.__points.append((x,y))
+        if len(self._trail__points) > 0:
+            if (x,y) != self._trail__points[-1]:
+                self._trail__points.append((x,y))
+        else:
+                self.__points.append((x,y))
+
 
 
 class gedAction(object):
     # create messages that are used to publish feedback/result
-    # _feedback = actionlib_tutorials.msg.FibonacciFeedback()
-    # _result = actionlib_tutorials.msg.FibonacciResult()
-    
     #_feedback = gmsg.goToPointPolarActionFeedback()
     #_result = gmsg.goToPointPolarActionResult() #has header and goalid
-    _feedback = gmsg.goToPointPolarFeedback()
-    _result = gmsg.goToPointPolarResult()
 
+    #switched from polar to cartesian
+    #_feedback = gmsg.goToPointPolarFeedback()
+    #_result = gmsg.goToPointPolarResult()
+    _feedback = gmsg.goToPointFeedback()
+    _result = gmsg.goToPointResult()
     def __init__(self, name):
         self._action_name = name
         self.pose = Pose()
-        #self._as = actionlib.SimpleActionServer(self._action_name, actionlib_tutorials.msg.FibonacciAction, execute_cb=self.execute_cb, auto_start = False)
-        self._as = actionlib.SimpleActionServer(self._action_name, gmsg.goToPointPolarAction, execute_cb=self.execute_cb,  auto_start = False)
-        self._as.start() #do not replace with auto_start...
-
-
+        self.pose_callback_last = 0
         self.pubtwist = rospy.Publisher('/ged/turtle1/cmd_vel', geomsg.Twist, queue_size=10)
         self.pubWeb= rospy.Publisher('/ged/listener', smsg.String, queue_size=10)
+        self.pose_subscriber = rospy.Subscriber('/ged/turtle1/pose', Pose, self.pose_callback)
+        self.r = rospy.Rate(rospy_Rate)
+
 
         for i in range(trails_collection_size):
             mitrail=trail(id=i)
@@ -140,6 +148,9 @@ class gedAction(object):
 
         cursors_collection[0].show=False #for tests
         cursors_collection[1].show=True #default cursor
+
+        self._as = actionlib.SimpleActionServer(self._action_name, gmsg.goToPointAction, execute_cb=self.execute_cb,  auto_start = False)
+        self._as.start() #do not replace with auto_start...
 
 
     def monitor_update(self,id):
@@ -161,24 +172,46 @@ class gedAction(object):
             self.pubWeb.publish(pubWebMsg)
 
 
+    def get_distance(self, goal_x, goal_y):
+        """
+        Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
+
+        :param goal_x:
+        :param goal_y:
+        :return: float # distance from current pos to goal
+        """
+        distance = math.sqrt(pow((goal_x - self.pose.x), 2) + pow((goal_y - self.pose.y), 2))
+        return distance
+
 
 
     def pose_callback(self, data):
-        print("pose_callback")
+        #global read-only pose_callback_period
+        #cadence of pose msgs processed,
+        #TODO: get a ROS-native way for throttling pose updates
+
         self.pose = data
         self.pose.x = round(self.pose.x, 4)
         self.pose.y = round(self.pose.y, 4)
-        self._feedback.xfeed=self.pose.x
-        self._feedback.yfeed=self.pose.y
-        self._as.publish_feedback(self._feedback) #keep the client in the loop
-        if ( monitor_updates ):
-            self.monitor_update(1) #TODO: handle more cursors
-
+        if (self.pose_callback_last +  pose_callback_period  < time.time()):
+            #print("pose_callback tstamp: {}".format(str(time.time())))
+            if self._as.current_goal.goal is not None:
+                self._feedback.xfeed=self.pose.x
+                self._feedback.yfeed=self.pose.y
+                self._as.publish_feedback(self._feedback) #keep the client in the loop
+            if ( monitor_updates ):
+                #  and ( self.pose.x != self.pose_x_monitor_last or
+                #                                self.pose.y != self.pose_y_monitor_last or
+                #                                self.pose.x != self.pose_theta_monitor_last)):
+                # self.pose_x_monitor_last = self.pose.x
+                # self.pose_y_monitor_last = self.pose.y
+                # self.pose_theta_monitor_last = self.pose.theta
+                self.monitor_update(1) #TODO: handle cursors_collection
+            self.pose_callback_last=time.time()
 
 
     def execute_cb(self, goal):
         # helper variables
-        r = rospy.Rate(5)
         success = True
         #Callback function implementing the pose value received
 
@@ -195,31 +228,61 @@ class gedAction(object):
             #self._feedback.sequence = ["Preempted",]
             #self._feedback.sequence = actionlib.GoalStatus.PREEMPTED
         else:
-            #miwist=geomsg.Twist(linear=geomsg.Vector3(x=goal.len),angular=geomsg.Vector3(x=goal.ang))
-            if goal.ang != 0:
-                miwist=geomsg.Twist(angular=geomsg.Vector3(z=-goal.ang*2*math.pi/360)) #to rad CW
-                self.pubtwist.publish(miwist,)
+            #mitwist=geomsg.Twist(linear=geomsg.Vector3(x=goal.len),angular=geomsg.Vector3(x=goal.ang))
 
-            if goal.len != 0:
-                miwist=geomsg.Twist(linear=geomsg.Vector3(x=goal.len))
-                self.pose_subscriber = rospy.Subscriber('/ged/turtle1/pose', Pose, self.pose_callback)
-                self.pubtwist.publish(miwist)
-                r.sleep()
-                self.pose_subscriber.unregister()
-                #                self.pubtwist.publish(miwist)
-                #                    self._as.publish_feedback(self._feedback)
-                #                    r.sleep()
+            #switched from polar to cartesian
+            #if goal.ang != 0:
+            #    mitwist=geomsg.Twist(angular=geomsg.Vector3(z=-goal.ang*2*math.pi/360)) #to rad CW
+            #    self.pubtwist.publish(mitwist,)
+            #if goal.len != 0:
+            mitwist=geomsg.Twist()
+            i_msg=0
+            i_msg_max=10
+            if not debug_teleport:
+                while (self.get_distance(goal.x,goal.y) > distance_tolerance) and (i_msg < i_msg_max):
+                    i_msg+=1
+                    #print(goal.x,goal.y, self.pose.x, self.pose.y, distance_tolerance, self.get_distance(goal.x,goal.y))
+
+                    #Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
+                    #linear velocity in the x-axis:
+                    mitwist.linear.x = 1.5 * math.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2))
+                    mitwist.linear.y = 0
+                    mitwist.linear.z = 0
+                    #angular velocity in the z-axis:
+                    mitwist.angular.x = 0
+                    mitwist.angular.y = 0
+                    mitwist.angular.z = 4 * (math.atan2(goal.y - self.pose.y, goal.x - self.pose.x) - self.pose.theta)
+
+                    #Publishing our vel_msg
+                    self.pubtwist.publish(mitwist)
+                    self.r.sleep()
+
+            if (self.get_distance(goal.x,goal.y) > distance_tolerance):
+                # looks like there is a problem that makes P controller go into infinite loops, until it's fixed, teleporting
+                rospy.wait_for_service('/ged/turtle1/teleport_absolute')
+                try:
+                    teleport = rospy.ServiceProxy('/ged/turtle1/teleport_absolute', TeleportAbsolute)
+                    response = teleport(goal.x,goal.y,0)
+                    print("Teleport response: {}".format(response))
+                    rospy.logwarn("Teleported: {}".format(response))
+                    self.pose_callback(self, self.pose)
+                    time.sleep(2)
+                except rospy.ServiceException, e:
+                    print "Service call failed: %s"%e
 
 
-                #self._feedback.status = actionlib.GoalStatus.SUCCEEDED #no need, state is a member or result
-                # this step is not necessary, the sequence is computed at 1 Hz for demonstration purposes
-                #        r.sleep()
+
+                    #self.pubtwist.publish(mitwist)
+                    #r.sleep()
+                    #mitwist.linear.x = 0
+                    #mitwist.angular.z =0
+                    #self.pubtwist.publish(mitwist)
 
         if success:
             #self._result.result(x=1,y=2)
             #self._result.sequence = self._feedback.sequence
             rospy.loginfo('%s: Succeeded' % self._action_name)
-            #self._as.set_succeeded(self._result)
+            self._as.set_succeeded(self._result)
 
 if __name__ == '__main__':
     rospy.init_node('ged_server_py',)
