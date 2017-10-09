@@ -42,6 +42,7 @@ import ged.msg as gmsg
 import std_msgs.msg as smsg
 
 monitor_updates = True #TODO: config file
+debug_teleport = True
 cursors_collection_size = 10
 trails_collection_size = 10
 cursors_collection=list() #global... 
@@ -97,7 +98,7 @@ class trail(object): #python2
     @property
     def points(self): #getter
         result=""
-        for point in self.__points:
+        for point in self._trail__points:
             result+=" "+str(int(point[0]*1000/11)) #TODO: send this to a "representation layer"
             result+=" "+str(int(1000*(1-point[1]/11)))
         return result.strip(" ")
@@ -109,7 +110,12 @@ class trail(object): #python2
 
 
     def appendpoint(self,x,y):
-        self.__points.append((x,y))
+        if len(self._trail__points) > 0:
+            if (x,y) != self._trail__points[-1]:
+                self._trail__points.append((x,y))
+        else:
+                self.__points.append((x,y))
+
 
 
 class gedAction(object):
@@ -124,7 +130,6 @@ class gedAction(object):
     _result = gmsg.goToPointResult()
     def __init__(self, name):
         self._action_name = name
-
         self.pose = Pose()
         self.pose_callback_last = 0
         self.pubtwist = rospy.Publisher('/ged/turtle1/cmd_vel', geomsg.Twist, queue_size=10)
@@ -188,15 +193,21 @@ class gedAction(object):
         self.pose = data
         self.pose.x = round(self.pose.x, 4)
         self.pose.y = round(self.pose.y, 4)
-#            if self._as.current_goal is not None:
-#         if (self.pose_callback_last +  pose_callback_period  < time.time()):
-#             #print("pose_callback tstamp: {}".format(str(time.time())))
-#             self._feedback.xfeed=self.pose.x
-#             self._feedback.yfeed=self.pose.y
-#             self._as.publish_feedback(self._feedback) #keep the client in the loop
-#             if ( monitor_updates ):
-#                 self.monitor_update(1) #TODO: handle cursors_collection
-#             self.pose_callback_last=time.time()
+        if (self.pose_callback_last +  pose_callback_period  < time.time()):
+            #print("pose_callback tstamp: {}".format(str(time.time())))
+            if self._as.current_goal.goal is not None:
+                self._feedback.xfeed=self.pose.x
+                self._feedback.yfeed=self.pose.y
+                self._as.publish_feedback(self._feedback) #keep the client in the loop
+            if ( monitor_updates ):
+                #  and ( self.pose.x != self.pose_x_monitor_last or
+                #                                self.pose.y != self.pose_y_monitor_last or
+                #                                self.pose.x != self.pose_theta_monitor_last)):
+                # self.pose_x_monitor_last = self.pose.x
+                # self.pose_y_monitor_last = self.pose.y
+                # self.pose_theta_monitor_last = self.pose.theta
+                self.monitor_update(1) #TODO: handle cursors_collection
+            self.pose_callback_last=time.time()
 
 
     def execute_cb(self, goal):
@@ -227,25 +238,25 @@ class gedAction(object):
             mitwist=geomsg.Twist()
             i_msg=0
             i_msg_max=10
-            while (self.get_distance(goal.x,goal.y) > distance_tolerance) and (i_msg < i_msg_max):
-                i_msg+=1
-                #print(goal.x,goal.y, self.pose.x, self.pose.y, distance_tolerance, self.get_distance(goal.x,goal.y))
+            if not debug_teleport:
+                while (self.get_distance(goal.x,goal.y) > distance_tolerance) and (i_msg < i_msg_max):
+                    i_msg+=1
+                    #print(goal.x,goal.y, self.pose.x, self.pose.y, distance_tolerance, self.get_distance(goal.x,goal.y))
 
-                #Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
-                #linear velocity in the x-axis:
-                mitwist.linear.x = 1.5 * math.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2))
-                mitwist.linear.y = 0
-                mitwist.linear.z = 0
+                    #Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
+                    #linear velocity in the x-axis:
+                    mitwist.linear.x = 1.5 * math.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2))
+                    mitwist.linear.y = 0
+                    mitwist.linear.z = 0
+                    #angular velocity in the z-axis:
+                    mitwist.angular.x = 0
+                    mitwist.angular.y = 0
+                    mitwist.angular.z = 4 * (math.atan2(goal.y - self.pose.y, goal.x - self.pose.x) - self.pose.theta)
 
-                #angular velocity in the z-axis:
-                mitwist.angular.x = 0
-                mitwist.angular.y = 0
-                mitwist.angular.z = 4 * (math.atan2(goal.y - self.pose.y, goal.x - self.pose.x) - self.pose.theta)
+                    #Publishing our vel_msg
+                    self.pubtwist.publish(mitwist)
+                    self.r.sleep()
 
-                #Publishing our vel_msg
-                self.pubtwist.publish(mitwist)
-                self.r.sleep()
-                #self.pose_subscriber.unregister()
             if (self.get_distance(goal.x,goal.y) > distance_tolerance):
                 # looks like there is a problem that makes P controller go into infinite loops, until it's fixed, teleporting
                 rospy.wait_for_service('/ged/turtle1/teleport_absolute')
@@ -254,17 +265,18 @@ class gedAction(object):
                     response = teleport(goal.x,goal.y,0)
                     print("Teleport response: {}".format(response))
                     rospy.logwarn("Teleported: {}".format(response))
+                    self.pose_callback(self, self.pose)
+                    time.sleep(2)
                 except rospy.ServiceException, e:
                     print "Service call failed: %s"%e
 
 
 
-            #self.pubtwist.publish(mitwist)
-            #r.sleep()
-            #mitwist.linear.x = 0
-            #mitwist.angular.z =0
-            #self.pubtwist.publish(mitwist)
-        rospy.spin()
+                    #self.pubtwist.publish(mitwist)
+                    #r.sleep()
+                    #mitwist.linear.x = 0
+                    #mitwist.angular.z =0
+                    #self.pubtwist.publish(mitwist)
 
         if success:
             #self._result.result(x=1,y=2)

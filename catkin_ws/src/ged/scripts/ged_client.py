@@ -16,7 +16,7 @@ import ACBged as acbg
 import actionlib_tutorials.msg
 
 micounter={"done":0,"active":0,"feedback":0}
-path_test1="[[11.0,5.0,0.0],[6.0,5.0,0.0]]"
+path_test1="[[8.0,8.0,0.0],[8.0,3.0,0.0],[3.0,8.0,0.0],[3.0,3.0,0.0]]"
 
 
 def ged_client():  #remember, not a class....
@@ -72,7 +72,7 @@ def ged_client():  #remember, not a class....
 
 
 
-    mymission=acbg.mission()
+    mymission=acbg.mission("default_mission")
     try:
         mymission.load(os.path.dirname(os.path.realpath(__file__))+"/test_mission2.pickle") #TODO: proper file storage
     except Exception as e:
