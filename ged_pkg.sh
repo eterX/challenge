@@ -98,9 +98,9 @@ if [ $1 = "install_pkg" ];then
 	catkin_make \
 		-DCMAKE_BUILD_TYPE=Release \
 		${pkg_name}
-	sudo chown $USER ${pkg_root}/share
-	sudo chown $USER ${pkg_root}/lib
-	catkin_make install -DCMAKE_INSTALL_PREFIX=${pkg_root}
+	sudo chown $USER /opt/ros/${ROS_DISTRO}/share
+	sudo chown $USER /opt/ros/${ROS_DISTRO}/lib
+	catkin_make install -DCMAKE_INSTALL_PREFIX=/opt/ros/${ROS_DISTRO}
 	# if [ $? -] #TODO: errorlevel...
 	set +x
 fi
@@ -129,6 +129,16 @@ if [ $1 = "install" ];then
 	set +x
 fi
 
+
+if [ $1 = "start" ];then 
+	cd ${prj_root}/WebSvr/web2py
+	echo cd ${prj_root}/WebSvr/web2py
+	echo starting webserver for Monitor and Operator interfaces
+	python web2py.py -a ged -i 0.0.0.0 &
+	echo starting ROS
+	roslaunch ged ged.launch
+	set +x
+fi
 
 
 if [ $1 = "placeholder" ];then 

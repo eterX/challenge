@@ -131,7 +131,8 @@
   // Connecting to ROS
   // -----------------
   var ros = new ROSLIB.Ros({
-    url : 'ws://manuela:9090'
+    url : 'ws://'+location.host+':9090'
+    //url : 'ws://manuela:9090'
   });
 
   // If there is an error on the backend, an 'error' emit will be emitted.
@@ -187,7 +188,6 @@
   //listener.unsubscribe();
 </script>
 </head>
-
 <body>
   <h1>Client Mockup</h1>
   <div id="statusIndicator">

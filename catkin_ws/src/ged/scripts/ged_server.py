@@ -265,7 +265,7 @@ class gedAction(object):
                     response = teleport(goal.x,goal.y,0)
                     print("Teleport response: {}".format(response))
                     rospy.logwarn("Teleported: {}".format(response))
-                    self.pose_callback(self, self.pose)
+                    self.pose_callback(self.pose)
                     time.sleep(2)
                 except rospy.ServiceException, e:
                     print "Service call failed: %s"%e
