@@ -42,7 +42,7 @@ import ged.msg as gmsg
 import std_msgs.msg as smsg
 
 monitor_updates = True #TODO: config file
-debug_teleport = True
+debug_teleport = False
 cursors_collection_size = 10
 trails_collection_size = 10
 cursors_collection=list() #global... 
@@ -52,7 +52,7 @@ cursor_rotate_template="cursor_rotate({id},{theta});"
 trail_points_template="trail_points({id},{points});"
 distance_tolerance=0.5
 pose_callback_period=0.1 #[secs]
-rospy_Rate=1
+rospy_Rate=15
 
 class cursor(object): #python2
     """
@@ -191,8 +191,8 @@ class gedAction(object):
         #TODO: get a ROS-native way for throttling pose updates
 
         self.pose = data
-        self.pose.x = round(self.pose.x, 4)
-        self.pose.y = round(self.pose.y, 4)
+#        self.pose.x = round(self.pose.x, 4)
+#        self.pose.y = round(self.pose.y, 4)
         if (self.pose_callback_last +  pose_callback_period  < time.time()):
             #print("pose_callback tstamp: {}".format(str(time.time())))
             if self._as.current_goal.goal is not None:
@@ -237,25 +237,31 @@ class gedAction(object):
             #if goal.len != 0:
             mitwist=geomsg.Twist()
             i_msg=0
-            i_msg_max=10
+            i_msg_max=100
             if not debug_teleport:
                 while (self.get_distance(goal.x,goal.y) > distance_tolerance) and (i_msg < i_msg_max):
                     i_msg+=1
                     #print(goal.x,goal.y, self.pose.x, self.pose.y, distance_tolerance, self.get_distance(goal.x,goal.y))
 
                     #Proportional Controller (thanks to https://github.com/clebercoutof/turtlesim_cleaner)
-                    #linear velocity in the x-axis:
-                    mitwist.linear.x = 1.5 * math.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2))
-                    mitwist.linear.y = 0
-                    mitwist.linear.z = 0
                     #angular velocity in the z-axis:
                     mitwist.angular.x = 0
                     mitwist.angular.y = 0
                     mitwist.angular.z = 4 * (math.atan2(goal.y - self.pose.y, goal.x - self.pose.x) - self.pose.theta)
-
                     #Publishing our vel_msg
                     self.pubtwist.publish(mitwist)
                     self.r.sleep()
+                    self.r.sleep()
+                    self.r.sleep()
+                    #linear velocity in the x-axis:
+                    mitwist.linear.x = 1.5 * math.sqrt(pow((goal.x - self.pose.x), 2) + pow((goal.y - self.pose.y), 2))
+                    mitwist.linear.y = 0
+                    mitwist.linear.z = 0
+                    self.pubtwist.publish(mitwist)
+                    self.r.sleep()
+
+
+
 
             if (self.get_distance(goal.x,goal.y) > distance_tolerance):
                 # looks like there is a problem that makes P controller go into infinite loops, until it's fixed, teleporting
